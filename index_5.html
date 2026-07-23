@@ -1,0 +1,533 @@
+<!DOCTYPE html><script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Chad July Vacation Tracker",
+  "schemaVersion": 1,
+  "description": "Live \"Where's Chad?\" trip status page for the July 16-26 2026 vacation (DC, Boston, Canada/New England cruise on ms Volendam, NYC), ending July 26 with the Acela home to DC, the Metro Silver Line to Reston, and a night drive to Blacksburg VA. Auto-highlights the current leg and shows live Amtrak status on each train leg.",
+  "mcpTools": [],
+  "mcpServerNames": []
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where's Chad? — July Vacation 2026</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fbfdfb;
+    --page-plane:     #f2f8f3;
+    --text-primary:   #10231a;
+    --text-secondary: #4d6156;
+    --text-muted:     #7d9086;
+    --gridline:       #dbe8dd;
+    --baseline:       #b9ccbd;
+    --border:         rgba(16,35,26,0.10);
+    --series-1:       #1c6e4a;   /* current-leg highlight — deeper forest green, distinct from status-good */
+    --series-1-glow:  rgba(28,110,74,0.18);
+    --status-good:    #0ca30c;   /* fixed status color — completed / on-time (not themed) */
+    --status-warning: #fab219;   /* fixed status color — delay / flagged (not themed) */
+    --card-shadow:    0 1px 3px rgba(16,35,26,0.07), 0 1px 2px rgba(16,35,26,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #142019;
+      --page-plane:     #0a130e;
+      --text-primary:   #f2f7f3;
+      --text-secondary: #b9c9bd;
+      --text-muted:     #82988a;
+      --gridline:       #24352b;
+      --baseline:       #35493c;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3fae7a;
+      --series-1-glow:  rgba(63,174,122,0.20);
+      --status-good:    #0ca30c;
+      --status-warning: #fab219;
+      --card-shadow:    0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.22);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #142019;
+    --page-plane:     #0a130e;
+    --text-primary:   #f2f7f3;
+    --text-secondary: #b9c9bd;
+    --text-muted:     #82988a;
+    --gridline:       #24352b;
+    --baseline:       #35493c;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3fae7a;
+    --series-1-glow:  rgba(63,174,122,0.20);
+    --status-good:    #0ca30c;
+    --status-warning: #fab219;
+    --card-shadow:    0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.22);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 56px; }
+
+  header.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+  header.top h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header.top p { margin: 0; color: var(--text-secondary); font-size: 14px; }
+  .theme-toggle {
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary);
+    border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+  }
+
+  .hero {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 16px;
+    border-top: 3px solid var(--series-1);
+  }
+  .hero .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--series-1); margin-bottom: 8px;
+  }
+  .hero .place { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+  .hero .subtitle { color: var(--text-secondary); font-size: 14px; margin: 0 0 14px; }
+  .hero .meta-row { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--text-secondary); }
+  .hero .meta-row div strong { display: block; color: var(--text-primary); font-size: 14px; font-weight: 600; }
+
+  .next-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; box-shadow: var(--card-shadow);
+  }
+  .next-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+  .next-card .title { font-size: 14px; font-weight: 600; }
+  .next-card .countdown { font-size: 13px; color: var(--text-secondary); text-align: right; white-space: nowrap; }
+
+  h2.section { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 28px 0 12px; }
+
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 2px; background: var(--gridline);
+  }
+  .leg { position: relative; padding-bottom: 18px; }
+  .leg:last-child { padding-bottom: 0; }
+  .leg .dot {
+    position: absolute; left: -28px; top: 3px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--surface-1); border: 2px solid var(--baseline);
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+  }
+  .leg.is-past .dot { border-color: var(--status-good); color: var(--status-good); }
+  .leg.is-current .dot { border-color: var(--series-1); background: var(--series-1); box-shadow: 0 0 0 4px var(--series-1-glow); }
+  .leg-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  }
+  .leg.is-current .leg-card { border-color: var(--series-1); box-shadow: var(--card-shadow); }
+  .leg.is-past .leg-card { opacity: 0.62; }
+  .leg-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .leg-date { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .leg-title { font-size: 14px; font-weight: 600; margin: 2px 0 3px; }
+  .leg-detail { font-size: 13px; color: var(--text-secondary); line-height: 1.45; }
+  .leg-flag {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px;
+    color: var(--status-warning); font-weight: 600;
+  }
+  .leg-flag::before { content: "⚠"; }
+
+  .train-badge {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 7px; font-size: 12px;
+    font-weight: 600; padding: 3px 8px; border-radius: 999px;
+  }
+  .train-badge.good { color: var(--status-good); background: rgba(12,163,12,0.10); }
+  .train-badge.warning { color: #96690a; background: rgba(250,178,25,0.20); }
+  .train-badge.muted, .train-badge.loading { color: var(--text-muted); background: var(--gridline); font-weight: 500; }
+  .train-badge.unavailable { color: var(--text-secondary); background: var(--gridline); font-weight: 500; }
+  .train-badge.unavailable a, .train-badge a { color: var(--series-1); }
+  .train-checked { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+  .hero .train-badge { margin-top: 0; margin-bottom: 12px; }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .train-badge.warning { color: #ffd580; background: rgba(250,178,25,0.16); }
+  }
+  :root[data-theme="dark"] .train-badge.warning { color: #ffd580; background: rgba(250,178,25,0.16); }
+
+  .directory { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .dir-card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  }
+  .dir-card .name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .dir-card .lines { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .dir-card a { color: var(--series-1); text-decoration: none; }
+
+  .notes { font-size: 13px; color: var(--text-secondary); line-height: 1.6; background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .notes p { margin: 0 0 8px; }
+  .notes p:last-child { margin-bottom: 0; }
+
+  footer.updated { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Chad's July Vacation</h1>
+      <p>July 16 – 26, 2026 · Washington · Boston · Canada & New England cruise · New York</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle" type="button">Toggle theme</button>
+  </header>
+
+  <div class="hero" id="heroCard">
+    <div class="eyebrow" id="heroEyebrow">Right now</div>
+    <p class="place" id="heroPlace">—</p>
+    <p class="subtitle" id="heroSubtitle">—</p>
+    <div id="heroTrainBadge"></div>
+    <div class="meta-row" id="heroMeta"></div>
+  </div>
+
+  <div class="next-card" id="nextCard">
+    <div>
+      <div class="label">Up next</div>
+      <div class="title" id="nextTitle">—</div>
+    </div>
+    <div class="countdown" id="nextCountdown">—</div>
+  </div>
+
+  <h2 class="section">Full itinerary</h2>
+  <div class="timeline" id="timeline"></div>
+
+  <h2 class="section">Hotels &amp; ship</h2>
+  <div class="directory">
+    <div class="dir-card">
+      <div class="name">Conrad Washington, DC</div>
+      <div class="lines">950 New York Ave. NW, Washington, DC 20001<br><a href="tel:+12028445900">(202) 844-5900</a></div>
+    </div>
+    <div class="dir-card">
+      <div class="name">Homewood Suites by Hilton — Boston Seaport</div>
+      <div class="lines">670 Summer Street, Boston, MA 02210<br><a href="tel:+18573563033">(857) 356-3033</a></div>
+    </div>
+    <div class="dir-card">
+      <div class="name">ms Volendam — Holland America Line</div>
+      <div class="lines">7-Day Canada &amp; New England: Maine, Maritimes &amp; Montreal · Booking #3TXHDR<br>Board at Black Falcon Terminal, Boston</div>
+    </div>
+    <div class="dir-card">
+      <div class="name">Hilton New York Fashion District</div>
+      <div class="lines">152 West 26th Street, New York, NY 10001<br><a href="tel:+12128585888">(212) 858-5888</a></div>
+    </div>
+  </div>
+
+  <h2 class="section">Good to know</h2>
+  <div class="notes">
+    <p>All times shown are Eastern (ET) — same as the original itinerary.</p>
+    <p>Cruise port times are per Holland America's published schedule and can shift slightly once underway.</p>
+    <p>Best way to reach Chad is by phone or text throughout — the ship also has WiFi and the Navigator app for day-to-day updates while at sea.</p>
+    <p>Each train leg below checks Amtrak's live status automatically (refreshes every 5 minutes) and shows on-time / delay info directly. Amtrak only starts tracking a train shortly before it departs, so legs further out will show "not yet tracked" until then.</p>
+  </div>
+
+  <footer class="updated" id="updatedFooter"></footer>
+</div>
+
+<script>
+(function () {
+  // All times Eastern (America/New_York), encoded with explicit -04:00 (EDT) offsets
+  // so comparisons are correct regardless of the viewer's own timezone.
+  var legs = [
+    {
+      start: "2026-07-16T14:00:00-04:00", end: "2026-07-16T21:28:00-04:00",
+      icon: "🚗", place: "Drove: Blacksburg → Reston, then Metro to DC",
+      detail: "Amtrak Train 66 was delayed, so it got canceled and Chad drove up instead. Parked in the garage at the Reston East Metro Station, rode the Silver Line to Metro Center, then took a Lyft to the Conrad.",
+      flag: "Original Train 66 canceled — drove instead"
+    },
+    {
+      start: "2026-07-16T21:28:00-04:00", end: "2026-07-17T12:50:00-04:00",
+      icon: "🏨", place: "Washington, DC",
+      detail: "Conrad Washington, DC · 950 New York Ave. NW · (202) 844-5900"
+    },
+    {
+      start: "2026-07-17T12:50:00-04:00", end: "2026-07-17T20:04:00-04:00",
+      icon: "🚆", place: "En route: Washington, DC → Boston, MA",
+      detail: "Amtrak Acela 2158 (Business) · departs Union Station 12:50 PM, arrives Boston South Station 8:04 PM",
+      train: "2158"
+    },
+    {
+      start: "2026-07-17T20:04:00-04:00", end: "2026-07-18T15:00:00-04:00",
+      icon: "🏨", place: "Boston, MA",
+      detail: "Homewood Suites by Hilton, Seaport District · 670 Summer Street · (857) 356-3033. Check out by 11:00 AM, free time before boarding."
+    },
+    {
+      start: "2026-07-18T15:00:00-04:00", end: "2026-07-19T07:00:00-04:00",
+      icon: "🌊", place: "At sea — Boston → Portland, ME",
+      detail: "Boarded ms Volendam at Black Falcon Terminal · sailed 3:00 PM · 7-Day Canada & New England (Booking #3TXHDR)"
+    },
+    {
+      start: "2026-07-19T07:00:00-04:00", end: "2026-07-19T13:00:00-04:00",
+      icon: "⚓", place: "Portland, Maine",
+      detail: "In port 7:00 AM – 1:00 PM"
+    },
+    {
+      start: "2026-07-19T13:00:00-04:00", end: "2026-07-20T10:00:00-04:00",
+      icon: "🌊", place: "At sea — Portland → Halifax",
+      detail: "Cruising overnight toward Nova Scotia"
+    },
+    {
+      start: "2026-07-20T10:00:00-04:00", end: "2026-07-20T18:00:00-04:00",
+      icon: "⚓", place: "Halifax, Nova Scotia",
+      detail: "In port 10:00 AM – 6:00 PM"
+    },
+    {
+      start: "2026-07-20T18:00:00-04:00", end: "2026-07-21T09:30:00-04:00",
+      icon: "🌊", place: "At sea — Halifax → Sydney",
+      detail: "Cruising overnight"
+    },
+    {
+      start: "2026-07-21T09:30:00-04:00", end: "2026-07-21T17:00:00-04:00",
+      icon: "⚓", place: "Sydney, Nova Scotia",
+      detail: "In port 9:30 AM – 5:00 PM"
+    },
+    {
+      start: "2026-07-21T17:00:00-04:00", end: "2026-07-22T07:00:00-04:00",
+      icon: "🌊", place: "At sea — Sydney → Charlottetown",
+      detail: "Cruising overnight toward Prince Edward Island"
+    },
+    {
+      start: "2026-07-22T07:00:00-04:00", end: "2026-07-22T16:00:00-04:00",
+      icon: "🌊", place: "At sea — Charlottetown stop canceled",
+      detail: "The Charlottetown, PEI port stop was canceled for safety due to bad weather, so this became a day at sea instead.",
+      flag: "Charlottetown port stop canceled (weather)"
+    },
+    {
+      start: "2026-07-22T16:00:00-04:00", end: "2026-07-23T23:59:59-04:00",
+      icon: "🌊", place: "Cruising the Gulf of St. Lawrence",
+      detail: "A scenic day at sea — no port stop"
+    },
+    {
+      start: "2026-07-23T23:59:59-04:00", end: "2026-07-24T09:00:00-04:00",
+      icon: "🌊", place: "At sea — approaching Québec City",
+      detail: "Overnight cruising"
+    },
+    {
+      start: "2026-07-24T09:00:00-04:00", end: "2026-07-24T17:00:00-04:00",
+      icon: "⚓", place: "Québec City, Québec",
+      detail: "In port 9:00 AM – 5:00 PM"
+    },
+    {
+      start: "2026-07-24T17:00:00-04:00", end: "2026-07-25T07:00:00-04:00",
+      icon: "🌊", place: "At sea — Québec City → Montreal",
+      detail: "Final overnight cruising before disembarkation"
+    },
+    {
+      start: "2026-07-25T07:00:00-04:00", end: "2026-07-25T11:10:00-04:00",
+      icon: "🛳️", place: "Montreal, QC — disembarking",
+      detail: "Arrive Montreal 7:00 AM, off the ship and through customs that morning"
+    },
+    {
+      start: "2026-07-25T11:10:00-04:00", end: "2026-07-25T21:00:00-04:00",
+      icon: "🚆", place: "En route: Montreal → New York, NY",
+      detail: "Amtrak Train 68 (Coach) · departs Montreal Gare Centrale 11:10 AM",
+      train: "68"
+    },
+    {
+      start: "2026-07-25T21:00:00-04:00", end: "2026-07-26T08:00:00-04:00",
+      icon: "🏨", place: "New York, NY",
+      detail: "Hilton New York Fashion District · 152 West 26th Street · (212) 858-5888. Early start ahead of the 8:00 AM train to DC."
+    },
+    {
+      start: "2026-07-26T08:00:00-04:00", end: "2026-07-26T11:00:00-04:00",
+      icon: "🚆", place: "En route: New York → Washington, DC",
+      detail: "Amtrak Acela 2209 (Business) · departs Moynihan Train Hall 8:00 AM, arrives Washington Union Station ~11:00 AM · Car 5, Seat 13D",
+      train: "2209"
+    },
+    {
+      start: "2026-07-26T11:00:00-04:00", end: "2026-07-26T16:30:00-04:00",
+      icon: "🏛️", place: "Day in Washington, DC",
+      detail: "Arrived Union Station around 11:00 AM. Spending the afternoon around the DC area before heading home tonight."
+    },
+    {
+      start: "2026-07-26T16:30:00-04:00", end: "2026-07-26T17:30:00-04:00",
+      icon: "🚇", place: "Metro Silver Line to Wiehle-Reston East",
+      detail: "Riding the Silver Line out to Reston (about 50 minutes). The car is parked at the Reston East Metro garage. Times approximate."
+    },
+    {
+      start: "2026-07-26T17:30:00-04:00", end: "2026-07-26T22:30:00-04:00",
+      icon: "🚗", place: "Driving: Reston to Blacksburg, VA",
+      detail: "Pick up the car at the Reston East garage and drive home to Blacksburg, roughly 4.5 hours via I-66 and I-81. Arriving after dark; exact time to be determined."
+    },
+    {
+      start: "2026-07-26T22:30:00-04:00", end: "2026-07-27T22:30:00-04:00",
+      icon: "🏠", place: "Home in Blacksburg, VA",
+      detail: "Trip complete. Welcome home!"
+    }
+  ];
+
+  var etFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit"
+  });
+  var etFmtShort = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric"
+  });
+
+  function fmt(iso) { return etFmt.format(new Date(iso)) + " ET"; }
+  function fmtDay(iso) { return etFmtShort.format(new Date(iso)); }
+  function fmtClock(d) {
+    return new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(d) + " ET";
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---- Live Amtrak status (api-v3.amtraker.com — community-run, unofficial) ----
+  var trainStatusCache = {};
+
+  function fetchTrainStatus(trainNum) {
+    var controller = ("AbortController" in window) ? new AbortController() : null;
+    var timeoutId = controller ? setTimeout(function () { controller.abort(); }, 7000) : null;
+    return fetch("https://api-v3.amtraker.com/v3/trains/" + encodeURIComponent(trainNum), {
+      signal: controller ? controller.signal : undefined
+    }).then(function (res) {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (arr) {
+      if (!arr || !arr.length) {
+        return { state: "not-tracked", checkedAt: new Date() };
+      }
+      var t = arr[0];
+      return {
+        state: "ok",
+        trainState: t.trainState || "",
+        trainTimely: (t.trainTimely || "").trim(),
+        statusMsg: (t.statusMsg || "").trim(),
+        alerts: t.alerts || [],
+        checkedAt: new Date()
+      };
+    }).catch(function () {
+      if (timeoutId) clearTimeout(timeoutId);
+      return { state: "error", checkedAt: new Date() };
+    });
+  }
+
+  function refreshAllTrainStatuses() {
+    var nums = [];
+    legs.forEach(function (l) { if (l.train && nums.indexOf(l.train) === -1) nums.push(l.train); });
+    nums.forEach(function (n) {
+      if (!trainStatusCache[n]) trainStatusCache[n] = { state: "loading" };
+      fetchTrainStatus(n).then(function (r) {
+        trainStatusCache[n] = r;
+        render();
+      });
+    });
+    render();
+  }
+
+  function trainBadgeHtml(trainNum) {
+    var c = trainStatusCache[trainNum];
+    if (!c || c.state === "loading") {
+      return '<span class="train-badge loading">🔄 Checking Amtrak status…</span>';
+    }
+    if (c.state === "error") {
+      return '<span class="train-badge unavailable">Live status unavailable right now — ' +
+        '<a href="https://www.amtrak.com/track-your-train" target="_blank" rel="noopener">track on Amtrak.com</a></span>';
+    }
+    if (c.state === "not-tracked") {
+      return '<span class="train-badge muted">Not yet tracked by Amtrak — check back closer to departure ' +
+        '(<a href="https://www.amtrak.com/track-your-train" target="_blank" rel="noopener">Amtrak.com</a>)</span>' +
+        '<span class="train-checked">checked ' + fmtClock(c.checkedAt) + '</span>';
+    }
+    var hasAlert = c.alerts && c.alerts.length > 0;
+    var timely = c.trainTimely;
+    var isLate = /late|delay/i.test(timely);
+    var cls = (hasAlert || isLate) ? "warning" : "good";
+    var label = timely ? escapeHtml(timely) : (c.trainState === "Active" ? "On time" : escapeHtml(c.trainState || "Tracked"));
+    var alertText = hasAlert ? " · ⚠ " + c.alerts.length + " alert" + (c.alerts.length > 1 ? "s" : "") : "";
+    return '<span class="train-badge ' + cls + '">🚆 ' + label + alertText + '</span>' +
+      '<span class="train-checked">checked ' + fmtClock(c.checkedAt) + '</span>';
+  }
+
+  function describeCountdown(ms) {
+    if (ms <= 0) return "underway";
+    var mins = Math.round(ms / 60000);
+    var h = Math.floor(mins / 60), m = mins % 60;
+    if (h >= 24) { var d = Math.floor(h / 24); h = h % 24; return d + "d " + h + "h away"; }
+    if (h > 0) return h + "h " + m + "m away";
+    return m + "m away";
+  }
+
+  function render() {
+    var now = new Date();
+    var currentIdx = -1;
+    for (var i = 0; i < legs.length; i++) {
+      var s = new Date(legs[i].start), e = new Date(legs[i].end);
+      if (now >= s && now < e) { currentIdx = i; break; }
+    }
+    if (currentIdx === -1) {
+      currentIdx = now < new Date(legs[0].start) ? 0 : legs.length - 1;
+    }
+    var current = legs[currentIdx];
+    var next = legs[currentIdx + 1];
+
+    document.getElementById("heroEyebrow").textContent =
+      now < new Date(legs[0].start) ? "Trip starts soon" :
+      currentIdx === legs.length - 1 && now >= new Date(legs[legs.length - 1].start) ? "Trip complete" : "Right now";
+    document.getElementById("heroPlace").textContent = current.icon + "  " + current.place;
+    document.getElementById("heroSubtitle").textContent = current.detail;
+    var heroBadgeEl = document.getElementById("heroTrainBadge");
+    heroBadgeEl.innerHTML = current.train ? trainBadgeHtml(current.train) : "";
+    document.getElementById("heroMeta").innerHTML =
+      "<div><strong>" + fmt(current.start) + "</strong>since</div>" +
+      "<div><strong>" + fmt(current.end) + "</strong>until</div>";
+
+    if (next) {
+      document.getElementById("nextTitle").textContent = next.icon + " " + next.place;
+      document.getElementById("nextCountdown").textContent =
+        fmt(next.start).replace(" ET", "") + " · " + describeCountdown(new Date(next.start) - now);
+    } else {
+      document.getElementById("nextCard").style.display = "none";
+    }
+
+    var tl = document.getElementById("timeline");
+    tl.innerHTML = "";
+    legs.forEach(function (leg, idx) {
+      var e = new Date(leg.end);
+      var s = new Date(leg.start);
+      var state = idx === currentIdx ? "is-current" : (now >= e ? "is-past" : "is-future");
+      var div = document.createElement("div");
+      div.className = "leg " + state;
+      div.innerHTML =
+        '<div class="dot">' + (state === "is-past" ? "✓" : "") + '</div>' +
+        '<div class="leg-card">' +
+          '<div class="leg-top"><span class="leg-date">' + fmtDay(leg.start) + '</span></div>' +
+          '<div class="leg-title">' + leg.icon + ' ' + leg.place + '</div>' +
+          '<div class="leg-detail">' + leg.detail + '</div>' +
+          (leg.flag ? '<div class="leg-flag">' + leg.flag + '</div>' : '') +
+          (leg.train ? '<div>' + trainBadgeHtml(leg.train) + '</div>' : '') +
+        '</div>';
+      tl.appendChild(div);
+    });
+
+    document.getElementById("updatedFooter").textContent =
+      "Updated live · viewed " + etFmt.format(now) + " ET · Amtrak status refreshes every 5 min";
+  }
+
+  render();
+  setInterval(render, 60000);
+  refreshAllTrainStatuses();
+  setInterval(refreshAllTrainStatuses, 5 * 60 * 1000);
+
+  var toggle = document.getElementById("themeToggle");
+  toggle.addEventListener("click", function () {
+    var root = document.documentElement;
+    var current = root.getAttribute("data-theme");
+    root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+  });
+})();
+</script>
+</body>
+</html>
